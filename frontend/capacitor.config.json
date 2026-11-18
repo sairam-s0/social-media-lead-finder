@@ -1,0 +1,9 @@
+{
+  "appId": "ai.leadpulse.leadfinder",
+  "appName": "Lead Finder v2",
+  "webDir": "dist",
+  "server": {
+    "cleartext": true,
+    "androidScheme": "https"
+  }
+}
