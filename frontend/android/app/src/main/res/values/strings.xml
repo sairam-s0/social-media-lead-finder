@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Lead Finder v2</string>
+    <string name="title_activity_main">Lead Finder v2</string>
+    <string name="package_name">ai.leadpulse.leadfinder</string>
+    <string name="custom_url_scheme">ai.leadpulse.leadfinder</string>
+</resources>
