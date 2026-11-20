@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Search, Edit2, Trash2, Power, Play, RefreshCw } from 'lucide-react';
+import { Plus, Search, Edit2, Trash2, Play, RefreshCw, Terminal, Check, Globe } from 'lucide-react';
 import SearchQueryModal from '../components/SearchQueryModal';
 import { getSearchQueries, createSearchQuery, updateSearchQuery, deleteSearchQuery, triggerFullSearchPipeline } from '../services/api';
 
@@ -9,12 +9,13 @@ const SearchQueries = () => {
   const [selectedQuery, setSelectedQuery] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [runningQueryId, setRunningQueryId] = useState(null);
+  const [filterText, setFilterText] = useState('');
 
   const fetchQueries = async () => {
     try {
       setIsLoading(true);
       const res = await getSearchQueries();
-      if (res.success) setQueries(res.search_queries);
+      if (res.success) setQueries(res.search_queries || []);
     } catch (err) {
       console.error('Failed to fetch search queries:', err);
     } finally {
@@ -82,188 +83,167 @@ const SearchQueries = () => {
     }
   };
 
+  const filteredQueries = queries.filter((q) => {
+    if (!filterText) return true;
+    const term = filterText.toLowerCase();
+    return (
+      (q.name && q.name.toLowerCase().includes(term)) ||
+      (q.query && q.query.toLowerCase().includes(term)) ||
+      (q.source && q.source.toLowerCase().includes(term))
+    );
+  });
+
   return (
-    <div className="space-y-6 pb-12">
-      {/* Header and Add Button */}
-      <div className="flex items-center justify-between">
+    <div className="space-y-4">
+      {/* Top Header Bar */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-[#1f2430] pb-4">
         <div>
-          <h2 className="text-lg font-bold text-white">Search Query Management</h2>
-          <p className="text-xs text-slate-400 font-normal">
-            Configure target search terms. Click <strong className="text-indigo-400">"Run This Query"</strong> to execute ONLY that specific query.
+          <div className="flex items-center gap-2">
+            <h2 className="text-base font-semibold text-[#ededef]">Search Query Directory</h2>
+            <span className="text-xs font-mono text-[#8a8f9e] bg-[#161922] px-2 py-0.5 rounded border border-[#1f2430]">
+              {queries.length} configured
+            </span>
+          </div>
+          <p className="text-xs text-[#8a8f9e] mt-0.5">
+            Target phrases and search operators scanned across public social posts.
           </p>
         </div>
 
-        <button
-          onClick={handleOpenAddModal}
-          className="px-4 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold shadow-lg shadow-indigo-600/20 flex items-center gap-2 transition-all cursor-pointer"
-        >
-          <Plus className="w-4 h-4" />
-          <span>Add Search Query</span>
-        </button>
+        <div className="flex items-center gap-2">
+          <div className="relative">
+            <Search className="w-3.5 h-3.5 text-[#555a68] absolute left-2.5 top-2.5 pointer-events-none" />
+            <input
+              type="text"
+              placeholder="Filter queries..."
+              value={filterText}
+              onChange={(e) => setFilterText(e.target.value)}
+              className="pl-8 pr-3 py-1.5 bg-[#0f1117] border border-[#1f2430] rounded-md text-xs text-[#ededef] placeholder-[#555a68] focus:border-[#5e6ad2] focus:outline-none w-48"
+            />
+          </div>
+
+          <button
+            type="button"
+            onClick={handleOpenAddModal}
+            className="flex items-center gap-1.5 px-3 py-1.5 bg-[#ededef] hover:bg-white text-[#090a0f] text-xs font-semibold rounded-md transition-colors min-h-[34px]"
+          >
+            <Plus className="w-3.5 h-3.5" />
+            <span>New Query</span>
+          </button>
+        </div>
       </div>
 
-      {/* Query List */}
+      {/* Structured Query List (Linear/Attio Style High-Density Table) */}
       {isLoading ? (
-        <div className="p-12 text-center flex justify-center glass-card rounded-2xl">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-500"></div>
+        <div className="p-12 text-center text-[#8a8f9e] flex items-center justify-center" role="status">
+          <div className="flex items-center gap-2 text-xs">
+            <RefreshCw className="w-4 h-4 animate-spin text-[#5e6ad2]" />
+            <span>Loading query directory...</span>
+          </div>
+        </div>
+      ) : filteredQueries.length === 0 ? (
+        <div className="p-8 text-center text-[#8a8f9e] bg-[#0f1117] rounded-lg border border-[#1f2430]">
+          <p className="text-sm font-medium text-[#ededef]">No search queries found</p>
+          <p className="text-xs text-[#8a8f9e] mt-1">
+            {filterText ? 'No queries matched your search term.' : 'Add your first query to begin discovering leads.'}
+          </p>
         </div>
       ) : (
-        <>
-          {/* MOBILE CARDS VIEW (Optimized for Android Screens) */}
-          <div className="md:hidden space-y-3">
-            {queries.map((q) => (
-              <div
-                key={q.id}
-                className="p-4 rounded-2xl glass-card border border-slate-800 space-y-3 bg-gradient-to-br from-slate-900/90 via-slate-900/60 to-slate-950/90 shadow-lg"
-              >
-                {/* Header: Name, Platform, and Status Toggle */}
-                <div className="flex items-start justify-between gap-2">
-                  <div className="min-w-0">
-                    <h3 className="font-bold text-white text-base truncate tracking-tight">{q.name}</h3>
-                    <div className="flex items-center gap-2 mt-1">
-                      <span className="px-2 py-0.5 rounded text-[10px] font-semibold bg-slate-800 text-slate-300 border border-slate-700">
-                        {q.source}
-                      </span>
-                      <span className="text-[11px] text-slate-400">
-                        Leads: <strong className="text-emerald-400">{q.leads_found_count || 0}</strong>
-                      </span>
+        <div className="bg-[#0f1117] border border-[#1f2430] rounded-lg overflow-hidden">
+          {/* Header Row */}
+          <div className="grid grid-cols-12 gap-3 px-4 py-2.5 border-b border-[#1f2430] bg-[#0b0d13] text-[11px] font-medium text-[#8a8f9e] uppercase tracking-wider">
+            <div className="col-span-4 sm:col-span-3">Target Name</div>
+            <div className="col-span-5 sm:col-span-6">Query String (Command)</div>
+            <div className="hidden sm:block sm:col-span-1">Source</div>
+            <div className="col-span-3 sm:col-span-2 text-right">Actions</div>
+          </div>
+
+          {/* Data Rows */}
+          <div className="divide-y divide-[#181c26]">
+            {filteredQueries.map((q) => {
+              const isRunning = runningQueryId === q.id;
+              return (
+                <div
+                  key={q.id}
+                  className="grid grid-cols-12 gap-3 px-4 py-3 items-center hover:bg-[#141720] transition-colors text-xs"
+                >
+                  {/* Name & Active Indicator */}
+                  <div className="col-span-4 sm:col-span-3 flex items-center gap-2 min-w-0">
+                    <button
+                      type="button"
+                      onClick={() => handleToggleStatus(q)}
+                      className={`w-2 h-2 rounded-full shrink-0 transition-opacity ${
+                        q.enabled ? 'bg-[#34d399]' : 'bg-[#555a68]'
+                      }`}
+                      title={q.enabled ? 'Active (Click to pause)' : 'Paused (Click to activate)'}
+                      aria-label={q.enabled ? 'Pause query' : 'Activate query'}
+                    />
+                    <div className="min-w-0">
+                      <span className="font-medium text-[#ededef] block truncate">{q.name}</span>
+                      <span className="text-[10px] text-[#555a68] sm:hidden block truncate">{q.source}</span>
                     </div>
                   </div>
 
-                  <button
-                    onClick={() => handleToggleStatus(q)}
-                    className={`px-2.5 py-1 rounded-xl text-xs font-bold border transition-colors shrink-0 ${
-                      q.enabled
-                        ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30'
-                        : 'bg-slate-800 text-slate-500 border-slate-700'
-                    }`}
-                  >
-                    {q.enabled ? 'ACTIVE' : 'DISABLED'}
-                  </button>
-                </div>
-
-                {/* Query String Display */}
-                <div className="p-2.5 rounded-xl bg-slate-950 font-mono text-xs text-indigo-300 border border-slate-800/80 break-words leading-relaxed">
-                  {q.query}
-                </div>
-
-                {/* Mobile Action Buttons */}
-                <div className="flex items-center justify-between border-t border-slate-800/80 pt-2.5">
-                  <button
-                    onClick={() => handleRunSingleQuery(q.id)}
-                    disabled={runningQueryId === q.id}
-                    className="px-3 py-1.5 rounded-xl bg-indigo-600/30 hover:bg-indigo-600 text-indigo-300 hover:text-white border border-indigo-500/40 text-xs font-semibold flex items-center gap-1.5 disabled:opacity-50 transition-all active:scale-95"
-                  >
-                    {runningQueryId === q.id ? (
-                      <RefreshCw className="w-3.5 h-3.5 animate-spin" />
-                    ) : (
-                      <Play className="w-3 h-3 fill-current" />
+                  {/* Query Command String (Explicit text preview) */}
+                  <div className="col-span-5 sm:col-span-6 font-mono text-[11px] text-[#8a8f9e] bg-[#090a0f] px-2.5 py-1 rounded border border-[#181c26] truncate">
+                    {q.query || (
+                      <span className="text-[#555a68] italic">No query command text set</span>
                     )}
-                    <span>{runningQueryId === q.id ? 'Running...' : 'Run Only This'}</span>
-                  </button>
+                  </div>
 
-                  <div className="flex items-center gap-1.5">
+                  {/* Source Platform */}
+                  <div className="hidden sm:block sm:col-span-1 text-xs text-[#8a8f9e] truncate">
+                    {q.source || 'All'}
+                  </div>
+
+                  {/* Contextual Actions */}
+                  <div className="col-span-3 sm:col-span-2 flex items-center justify-end gap-1.5">
                     <button
+                      type="button"
+                      onClick={() => handleRunSingleQuery(q.id)}
+                      disabled={isRunning}
+                      className="flex items-center gap-1 px-2.5 py-1 bg-[#161922] hover:bg-[#1f2430] text-[#ededef] border border-[#282f40] rounded text-[11px] font-medium transition-colors disabled:opacity-50"
+                      title="Execute this specific query now"
+                    >
+                      <Play className={`w-3 h-3 fill-current ${isRunning ? 'animate-pulse text-[#5e6ad2]' : ''}`} />
+                      <span className="hidden md:inline">{isRunning ? 'Running' : 'Run'}</span>
+                    </button>
+
+                    <button
+                      type="button"
                       onClick={() => handleOpenEditModal(q)}
-                      className="p-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 active:scale-90 transition-all"
-                      title="Edit Query"
+                      className="p-1.5 text-[#8a8f9e] hover:text-[#ededef] hover:bg-[#161922] rounded transition-colors"
+                      title="Edit query"
+                      aria-label="Edit query"
                     >
                       <Edit2 className="w-3.5 h-3.5" />
                     </button>
+
                     <button
+                      type="button"
                       onClick={() => handleDeleteQuery(q.id)}
-                      className="p-2 rounded-xl bg-slate-800 hover:bg-red-500/20 text-slate-400 hover:text-red-400 active:scale-90 transition-all"
-                      title="Delete Query"
+                      className="p-1.5 text-[#8a8f9e] hover:text-[#f87171] hover:bg-[#161922] rounded transition-colors"
+                      title="Delete query"
+                      aria-label="Delete query"
                     >
                       <Trash2 className="w-3.5 h-3.5" />
                     </button>
                   </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
-
-          {/* DESKTOP TABLE VIEW */}
-          <div className="hidden md:block overflow-x-auto rounded-2xl glass-card border border-slate-800">
-            <table className="w-full text-left text-sm">
-              <thead className="bg-slate-900/80 text-xs uppercase text-slate-400 border-b border-slate-800 font-semibold tracking-wider">
-                <tr>
-                  <th className="py-4 px-5">Query Name</th>
-                  <th className="py-4 px-5">Search Query String</th>
-                  <th className="py-4 px-5">Source</th>
-                  <th className="py-4 px-5">Status</th>
-                  <th className="py-4 px-5">Results</th>
-                  <th className="py-4 px-5">Leads Found</th>
-                  <th className="py-4 px-5 text-right">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-800/60">
-                {queries.map((q) => (
-                  <tr key={q.id} className="hover:bg-slate-800/40 transition-colors">
-                    <td className="py-4 px-5 font-bold text-white text-sm">{q.name}</td>
-                    <td className="py-4 px-5 font-mono text-xs text-indigo-300 max-w-xs truncate">{q.query}</td>
-                    <td className="py-4 px-5">
-                      <span className="px-2 py-0.5 rounded text-[11px] font-medium bg-slate-800 text-slate-300 border border-slate-700">
-                        {q.source}
-                      </span>
-                    </td>
-                    <td className="py-4 px-5">
-                      <button
-                        onClick={() => handleToggleStatus(q)}
-                        className={`px-2.5 py-1 rounded-lg text-xs font-bold border cursor-pointer transition-colors ${
-                          q.enabled
-                            ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30'
-                            : 'bg-slate-800 text-slate-500 border-slate-700'
-                        }`}
-                      >
-                        {q.enabled ? 'ACTIVE' : 'DISABLED'}
-                      </button>
-                    </td>
-                    <td className="py-4 px-5 text-xs text-slate-300">{q.results_count || 0}</td>
-                    <td className="py-4 px-5 text-xs font-bold text-emerald-400">{q.leads_found_count || 0}</td>
-                    <td className="py-4 px-5 text-right space-x-2">
-                      <button
-                        onClick={() => handleRunSingleQuery(q.id)}
-                        disabled={runningQueryId === q.id}
-                        title="Run ONLY this query"
-                        className="px-3 py-1 rounded-lg bg-indigo-600/30 hover:bg-indigo-600 text-indigo-300 hover:text-white border border-indigo-500/40 transition-colors cursor-pointer text-xs font-semibold inline-flex items-center gap-1.5 disabled:opacity-50"
-                      >
-                        {runningQueryId === q.id ? (
-                          <RefreshCw className="w-3 h-3 animate-spin" />
-                        ) : (
-                          <Play className="w-3 h-3 fill-current" />
-                        )}
-                        <span>Run Only This</span>
-                      </button>
-
-                      <button
-                        onClick={() => handleOpenEditModal(q)}
-                        className="p-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white transition-colors cursor-pointer inline-flex items-center"
-                      >
-                        <Edit2 className="w-3.5 h-3.5" />
-                      </button>
-                      <button
-                        onClick={() => handleDeleteQuery(q.id)}
-                        className="p-1.5 rounded-lg bg-slate-800 hover:bg-red-500/20 text-slate-400 hover:text-red-400 transition-colors cursor-pointer inline-flex items-center"
-                      >
-                        <Trash2 className="w-3.5 h-3.5" />
-                      </button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </>
+        </div>
       )}
 
-      {/* Modal Integration */}
-      <SearchQueryModal
-        isOpen={isModalOpen}
-        onClose={() => setIsModalOpen(false)}
-        onSave={handleSaveQuery}
-        initialData={selectedQuery}
-      />
+      {/* Edit / Add Modal */}
+      {isModalOpen && (
+        <SearchQueryModal
+          isOpen={isModalOpen}
+          initialData={selectedQuery}
+          onClose={() => setIsModalOpen(false)}
+          onSave={handleSaveQuery}
+        />
+      )}
     </div>
   );
 };

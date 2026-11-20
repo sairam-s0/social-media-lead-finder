@@ -6,7 +6,7 @@ __pycache__/
 # C extensions
 *.so
 
-# Distribution / packaging
+# Distribution / packaging / PyInstaller
 .Python
 build/
 develop-eggs/
@@ -23,33 +23,52 @@ wheels/
 *.egg-info/
 .installed.cfg
 *.egg
+*.spec.bak
 
-# Virtual environments
-venv/
-env/
-ENV/
+# Pytest & test caches
+.pytest_cache/
+.coverage
+htmlcov/
 
-# Database
+# Database & local data
 *.db
 *.sqlite3
 data/*.db
+data/leads.db
 
-# Node.js
+# Node.js & npm
 node_modules/
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 .pnpm-debug.log*
 
-# Vite build
+# Frontend Vite build output
 frontend/dist/
 
-# Environment variables
+# Android Gradle build & local configs
+frontend/android/.gradle/
+frontend/android/build/
+frontend/android/app/build/
+frontend/android/capacitor-cordova-android-plugins/build/
+frontend/android/local.properties
+*.apk.idsig
+
+# Environment variables & secrets
 .env
 backend/.env
+*.env.local
 
-# IDE & OS
+# Batch scripts, temporary dumps, and legacy source bundles
+social-lead-finder.md
+sign_build.bat
+start_backend.bat
+
+# IDE & OS files
 .vscode/
 .idea/
 .DS_Store
 Thumbs.db
+Desktop.ini
+*.tmp
+*.log

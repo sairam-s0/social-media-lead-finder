@@ -25,94 +25,105 @@ const SearchQueryModal = ({ isOpen, onClose, onSave, initialData }) => {
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    onSave({ name, query, source, enabled });
+    if (!name.trim() || !query.trim()) return;
+    onSave({ name: name.trim(), query: query.trim(), source, enabled });
   };
 
   return (
-    <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4">
-      <div className="w-full max-w-lg glass-panel rounded-2xl border border-slate-800 shadow-2xl p-6 space-y-6">
-        <div className="flex items-center justify-between border-b border-slate-800 pb-4">
-          <div className="flex items-center gap-2">
-            <Search className="w-5 h-5 text-indigo-400" />
-            <h3 className="text-lg font-bold text-white">
-              {initialData ? 'Edit Search Query' : 'Add New Search Query'}
-            </h3>
-          </div>
-          <button onClick={onClose} className="text-slate-400 hover:text-white transition-colors cursor-pointer">
-            <X className="w-5 h-5" />
+    <div 
+      role="dialog" 
+      aria-modal="true" 
+      aria-labelledby="modal-query-title"
+      className="fixed inset-0 z-50 bg-[#090a0f]/80 flex items-center justify-center p-4 animate-in fade-in duration-100"
+    >
+      <div className="w-full max-w-lg bg-[#0f1117] rounded-lg border border-[#282f40] shadow-2xl p-5 space-y-4">
+        <div className="flex items-center justify-between border-b border-[#1f2430] pb-3">
+          <h3 id="modal-query-title" className="text-sm font-semibold text-[#ededef]">
+            {initialData ? 'Edit Target Query' : 'New Target Query'}
+          </h3>
+          <button 
+            type="button" 
+            onClick={onClose} 
+            className="p-1 text-[#8a8f9e] hover:text-[#ededef] rounded transition-colors"
+            aria-label="Close modal"
+          >
+            <X className="w-4 h-4" />
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form onSubmit={handleSubmit} className="space-y-3.5 text-xs">
           <div>
-            <label className="block text-xs font-medium text-slate-400 mb-1">Query Display Name</label>
+            <label htmlFor="query-name" className="block text-[#8a8f9e] mb-1 font-medium">Query Name</label>
             <input
+              id="query-name"
               type="text"
               required
-              placeholder="e.g. Digital Marketing Agency - Need"
+              placeholder="e.g. SEO Agency - Looking For"
               value={name}
               onChange={(e) => setName(e.target.value)}
-              className="w-full p-3 rounded-xl bg-slate-950 border border-slate-800 text-sm text-white focus:border-indigo-500 outline-none"
+              className="w-full p-2.5 bg-[#090a0f] border border-[#1f2430] rounded-md text-[#ededef] placeholder-[#555a68] focus:border-[#5e6ad2] focus:outline-none"
             />
           </div>
 
           <div>
-            <label className="block text-xs font-medium text-slate-400 mb-1">Exa Search Query String</label>
+            <label htmlFor="query-command" className="block text-[#8a8f9e] mb-1 font-medium">Search Query Command</label>
             <textarea
-              rows={3}
+              id="query-command"
               required
-              placeholder='site:linkedin.com/posts "looking for a digital marketing agency"'
+              rows={3}
+              placeholder='e.g. site:linkedin.com/posts "looking for a digital marketing agency"'
               value={query}
               onChange={(e) => setQuery(e.target.value)}
-              className="w-full p-3 rounded-xl bg-slate-950 border border-slate-800 text-sm text-white font-mono focus:border-indigo-500 outline-none"
+              className="w-full p-2.5 bg-[#090a0f] border border-[#1f2430] rounded-md text-[#ededef] font-mono text-[11px] placeholder-[#555a68] focus:border-[#5e6ad2] focus:outline-none"
             />
-            <p className="text-[11px] text-slate-500 mt-1">
-              Supports Exa operators like site:linkedin.com/posts and exact phrase matching in quotes.
+            <p className="text-[11px] text-[#555a68] mt-1">
+              Supports Google & Exa search operators like <code>site:</code> and quotes for exact matching.
             </p>
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block text-xs font-medium text-slate-400 mb-1">Source Platform</label>
+              <label htmlFor="query-source" className="block text-[#8a8f9e] mb-1 font-medium">Platform</label>
               <select
+                id="query-source"
                 value={source}
                 onChange={(e) => setSource(e.target.value)}
-                className="w-full p-3 rounded-xl bg-slate-950 border border-slate-800 text-sm text-white focus:border-indigo-500 outline-none"
+                className="w-full p-2 bg-[#090a0f] border border-[#1f2430] rounded-md text-[#ededef] focus:border-[#5e6ad2] focus:outline-none"
               >
                 <option value="LinkedIn">LinkedIn</option>
                 <option value="Twitter">Twitter / X</option>
                 <option value="Reddit">Reddit</option>
-                <option value="Public Web">Public Web</option>
+                <option value="Web">Public Web</option>
               </select>
             </div>
 
             <div>
-              <label className="block text-xs font-medium text-slate-400 mb-1">Status</label>
-              <label className="flex items-center gap-2 mt-3 cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={enabled}
-                  onChange={(e) => setEnabled(e.target.checked)}
-                  className="w-4 h-4 rounded text-indigo-600 focus:ring-indigo-500 bg-slate-950 border-slate-800"
-                />
-                <span className="text-xs text-slate-300 font-medium">Enable Automatic Search</span>
-              </label>
+              <label htmlFor="query-status" className="block text-[#8a8f9e] mb-1 font-medium">Status</label>
+              <select
+                id="query-status"
+                value={enabled ? 'true' : 'false'}
+                onChange={(e) => setEnabled(e.target.value === 'true')}
+                className="w-full p-2 bg-[#090a0f] border border-[#1f2430] rounded-md text-[#ededef] focus:border-[#5e6ad2] focus:outline-none"
+              >
+                <option value="true">Active & Scheduled</option>
+                <option value="false">Paused</option>
+              </select>
             </div>
           </div>
 
-          <div className="flex justify-end gap-3 pt-4 border-t border-slate-800">
+          <div className="flex items-center justify-end gap-2 pt-3 border-t border-[#1f2430]">
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-semibold cursor-pointer"
+              className="px-3 py-1.5 bg-[#161922] hover:bg-[#1f2430] text-[#8a8f9e] hover:text-[#ededef] rounded-md text-xs font-medium transition-colors"
             >
               Cancel
             </button>
             <button
               type="submit"
-              className="px-5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold shadow-lg shadow-indigo-600/20 cursor-pointer"
+              className="px-3.5 py-1.5 bg-[#ededef] hover:bg-white text-[#090a0f] rounded-md text-xs font-semibold transition-colors"
             >
-              Save Query
+              {initialData ? 'Save Changes' : 'Create Query'}
             </button>
           </div>
         </form>

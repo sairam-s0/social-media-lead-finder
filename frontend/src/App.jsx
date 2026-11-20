@@ -5,6 +5,7 @@ import Header from './components/Header';
 import MobileNavigation from './components/MobileNavigation';
 import LeadDetailModal from './components/LeadDetailModal';
 import FirstRunWizard from './components/FirstRunWizard';
+import MobileConnectModal from './components/MobileConnectModal';
 
 import Dashboard from './pages/Dashboard';
 import Leads from './pages/Leads';
@@ -17,8 +18,8 @@ import { getSettings, triggerFullSearchPipeline, updateLead, ensureSessionToken 
 const App = () => {
   const location = useLocation();
   const [branding, setBranding] = useState({
-    company_name: 'LeadPulse AI',
-    company_tagline: 'Automated Social Lead Discovery Engine',
+    company_name: 'LeadPulse',
+    company_tagline: 'Social Lead Discovery Engine',
     company_logo: '⚡',
   });
   const [healthStatus, setHealthStatus] = useState(null);
@@ -26,13 +27,14 @@ const App = () => {
   const [isSearching, setIsSearching] = useState(false);
   const [searchRunMetrics, setSearchRunMetrics] = useState(null);
   const [showFirstRunWizard, setShowFirstRunWizard] = useState(false);
+  const [showMobileConnectModal, setShowMobileConnectModal] = useState(false);
   const [toast, setToast] = useState(null);
 
   const showNotification = (message, type = 'success') => {
     setToast({ message, type });
     setTimeout(() => {
       setToast((prev) => (prev?.message === message ? null : prev));
-    }, 4500);
+    }, 3500);
   };
 
   const fetchBrandingAndHealth = async () => {
@@ -48,7 +50,6 @@ const App = () => {
             company_logo: res.settings.company_logo || prev.company_logo,
           }));
 
-          // Trigger First-Run Wizard if setup not yet finalized
           if (res.settings.first_run_completed !== 'true' && !res.vault?.exa_configured) {
             setShowFirstRunWizard(true);
           }
@@ -67,19 +68,19 @@ const App = () => {
   const handleRunSearch = async (options = {}) => {
     try {
       setIsSearching(true);
-      showNotification('🔍 Scanning social platforms & live web for leads...', 'info');
+      showNotification('Scanning social platforms for prospective leads...', 'info');
       const metrics = await triggerFullSearchPipeline(options);
       setSearchRunMetrics(metrics);
       window.dispatchEvent(new Event('lead_data_updated'));
       const found = metrics?.new_leads_found ?? 0;
       if (found > 0) {
-        showNotification(`✨ Found ${found} new prospective client leads!`, 'success');
+        showNotification(`Found ${found} new prospective client leads!`, 'success');
       } else {
-        showNotification('✅ Lead discovery scan complete! Latest leads loaded.', 'info');
+        showNotification('Scan completed. Latest leads updated.', 'info');
       }
     } catch (err) {
       console.error('Manual search trigger failed:', err);
-      showNotification('⚠️ Lead scan completed with offline fallback.', 'info');
+      showNotification('Lead scan completed with offline fallback.', 'info');
     } finally {
       setIsSearching(false);
     }
@@ -117,79 +118,85 @@ const App = () => {
   const getPageTitle = () => {
     switch (location.pathname) {
       case '/':
-        return 'Dashboard Overview';
+        return 'Overview';
       case '/leads':
-        return 'Discovered Leads';
+        return 'Leads';
       case '/automation':
-        return 'Automation Engine';
+        return 'Automation';
       case '/search-queries':
         return 'Search Queries';
       case '/settings':
-        return 'System Settings';
+        return 'Settings';
       default:
-        return 'Social Lead Finder';
+        return 'LeadPulse';
     }
   };
 
   return (
-    <div className="flex h-screen bg-slate-950 text-slate-100 overflow-hidden font-['Plus_Jakarta_Sans',sans-serif]">
-      {/* Sidebar Navigation */}
-      <Sidebar branding={branding} />
+    <div className="flex h-screen bg-[#090a0f] text-[#ededef] overflow-hidden select-none font-sans">
+      {/* Desktop Navigation Shell */}
+      <Sidebar 
+        branding={branding} 
+        onOpenMobileModal={() => setShowMobileConnectModal(true)} 
+      />
 
-      {/* Main Layout Area */}
-      <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
-        {/* Top Header */}
+      {/* Main Full-Bleed Application Stage */}
+      <div className="flex-1 flex flex-col min-w-0 h-full overflow-hidden">
+        {/* Header */}
         <Header
           title={getPageTitle()}
           onRunSearch={handleRunSearch}
           isSearching={isSearching}
           healthStatus={healthStatus}
+          onOpenMobileModal={() => setShowMobileConnectModal(true)}
         />
 
-        {/* Scrollable Page Content with Mobile Bottom Padding */}
-        <main className="flex-1 overflow-y-auto p-4 md:p-8 pb-28 md:pb-8">
-          <Routes>
-            <Route
-              path="/"
-              element={
-                <Dashboard
-                  onSelectLead={setSelectedLead}
-                  onRunSearch={handleRunSearch}
-                  isSearching={isSearching}
-                />
-              }
-            />
-            <Route path="/leads" element={<Leads onSelectLead={setSelectedLead} />} />
-            <Route
-              path="/automation"
-              element={
-                <Automation
-                  onRunSearch={handleRunSearch}
-                  isSearching={isSearching}
-                  searchRunMetrics={searchRunMetrics}
-                />
-              }
-            />
-            <Route path="/search-queries" element={<SearchQueries />} />
-            <Route
-              path="/settings"
-              element={
-                <Settings
-                  onBrandingUpdated={(newB) => setBranding((prev) => ({ ...prev, ...newB }))}
-                />
-              }
-            />
-          </Routes>
+        {/* Scrollable Stage: Full width with balanced padding */}
+        <main className="flex-1 overflow-y-auto px-5 md:px-8 py-6 pb-20 md:pb-8">
+          <div className="w-full max-w-[1440px] mx-auto">
+            <Routes>
+              <Route
+                path="/"
+                element={
+                  <Dashboard
+                    onSelectLead={setSelectedLead}
+                    onRunSearch={handleRunSearch}
+                    isSearching={isSearching}
+                  />
+                }
+              />
+              <Route path="/leads" element={<Leads onSelectLead={setSelectedLead} />} />
+              <Route
+                path="/automation"
+                element={
+                  <Automation
+                    onRunSearch={handleRunSearch}
+                    isSearching={isSearching}
+                    searchRunMetrics={searchRunMetrics}
+                  />
+                }
+              />
+              <Route path="/search-queries" element={<SearchQueries />} />
+              <Route
+                path="/settings"
+                element={
+                  <Settings
+                    onBrandingUpdated={(newB) => setBranding((prev) => ({ ...prev, ...newB }))}
+                  />
+                }
+              />
+            </Routes>
+          </div>
         </main>
       </div>
 
-      {/* Native Mobile Bottom Navigation Bar (Visible on mobile/Android only) */}
+      {/* Mobile Bottom Navigation (Preserved exactly as approved) */}
       <MobileNavigation
         onRunSearch={handleRunSearch}
         isSearching={isSearching}
       />
 
-      {/* First-Run Onboarding Wizard */}
+      {/* Onboarding Wizard */}
       {showFirstRunWizard && (
         <FirstRunWizard
           onComplete={() => {
@@ -199,7 +206,13 @@ const App = () => {
         />
       )}
 
-      {/* Lead Detail Slide-over Modal / Mobile Bottom Sheet */}
+      {/* Mobile Connect QR / Network Modal */}
+      <MobileConnectModal
+        isOpen={showMobileConnectModal}
+        onClose={() => setShowMobileConnectModal(false)}
+      />
+
+      {/* Lead Detail Slide-over Modal / Sheet */}
       <LeadDetailModal
         lead={selectedLead}
         onClose={() => setSelectedLead(null)}
@@ -208,12 +221,18 @@ const App = () => {
         onDeleteLead={handleDeleteLead}
       />
 
-      {/* Floating System Notification Toast */}
+      {/* Linear-Style Notification Toast */}
       {toast && (
-        <div className="fixed top-4 left-1/2 -translate-x-1/2 z-50 px-4 py-2.5 rounded-2xl bg-slate-900/95 border border-indigo-500/50 shadow-2xl shadow-indigo-950/80 backdrop-blur-xl flex items-center gap-2.5 text-xs font-semibold text-white max-w-[90vw] md:max-w-md pointer-events-none transition-all">
-          <span className={`w-2 h-2 rounded-full shrink-0 ${toast.type === 'success' ? 'bg-emerald-400' : 'bg-indigo-400'} animate-ping`} />
-          <span className="truncate">{toast.message}</span>
-        </div>
+        <aside 
+          aria-live="polite"
+          className="fixed bottom-16 md:bottom-6 right-6 z-50 px-3.5 py-2 bg-[#161922] border border-[#282f40] shadow-xl rounded-md flex items-center gap-2.5 text-xs font-medium text-[#ededef] animate-in fade-in slide-in-from-bottom-2"
+        >
+          <span 
+            className={`w-1.5 h-1.5 rounded-full shrink-0 ${toast.type === 'success' ? 'bg-[#34d399]' : 'bg-[#5e6ad2]'}`} 
+            aria-hidden="true" 
+          />
+          <span>{toast.message}</span>
+        </aside>
       )}
     </div>
   );
