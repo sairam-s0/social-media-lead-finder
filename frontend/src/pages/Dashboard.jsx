@@ -1,9 +1,19 @@
 import React, { useState, useEffect } from 'react';
-import { Users, UserCheck, Calendar, Zap, TrendingUp, PieChart as PieIcon, Layers, Play } from 'lucide-react';
-import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, Tooltip, BarChart, Bar } from 'recharts';
-import StatCard from '../components/StatCard';
-import LeadTable from '../components/LeadTable';
+import { 
+  Users, 
+  UserCheck, 
+  Calendar, 
+  Zap, 
+  TrendingUp, 
+  RefreshCw, 
+  Play, 
+  ArrowUpRight,
+  Globe,
+  Sparkles,
+  BarChart2
+} from 'lucide-react';
 import { getStats, getLeads, updateLead } from '../services/api';
+import LeadTable from '../components/LeadTable';
 
 const Dashboard = ({ onSelectLead, onRunSearch, isSearching }) => {
   const [stats, setStats] = useState(null);
@@ -15,11 +25,11 @@ const Dashboard = ({ onSelectLead, onRunSearch, isSearching }) => {
       setIsLoading(true);
       const [statsRes, leadsRes] = await Promise.all([
         getStats(),
-        getLeads({ limit: 5 })
+        getLeads({ limit: 8 })
       ]);
 
       if (statsRes.success) setStats(statsRes);
-      if (leadsRes.success) setRecentLeads(leadsRes.leads);
+      if (leadsRes.success) setRecentLeads(leadsRes.leads || []);
     } catch (err) {
       console.error('Failed to load dashboard data:', err);
     } finally {
@@ -30,7 +40,6 @@ const Dashboard = ({ onSelectLead, onRunSearch, isSearching }) => {
   useEffect(() => {
     fetchDashboardData();
 
-    // Listen for custom update events when search runs
     const handleUpdate = () => fetchDashboardData();
     window.addEventListener('lead_data_updated', handleUpdate);
     return () => window.removeEventListener('lead_data_updated', handleUpdate);
@@ -47,116 +56,173 @@ const Dashboard = ({ onSelectLead, onRunSearch, isSearching }) => {
 
   if (isLoading) {
     return (
-      <div className="p-8 text-center text-slate-500 flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-500"></div>
+      <div className="p-16 text-center text-[#8a8f9e] flex items-center justify-center" role="status">
+        <div className="flex items-center gap-2 text-xs">
+          <RefreshCw className="w-4 h-4 animate-spin text-[#5e6ad2]" />
+          <span>Refreshing analytics...</span>
+        </div>
       </div>
     );
   }
 
+  const total = stats?.total_leads || 0;
+  const newLeads = stats?.new_leads || 0;
+  const qualified = stats?.qualified_leads || 0;
+  const contacted = stats?.contacted_leads || 0;
+
+  // Calculate percentages for progress bars
+  const totalSafe = total > 0 ? total : 1;
+  const newPct = Math.round((newLeads / totalSafe) * 100);
+  const qualifiedPct = Math.round((qualified / totalSafe) * 100);
+  const contactedPct = Math.round((contacted / totalSafe) * 100);
+
   return (
-    <div className="space-y-8 pb-12">
-      {/* KPI Cards Grid */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-5">
-        <StatCard
-          title="Total Leads"
-          value={stats?.total_leads || 0}
-          icon={Users}
-          color="indigo"
-          subtitle="Real leads in database"
-        />
-        <StatCard
-          title="New Leads"
-          value={stats?.new_leads || 0}
-          icon={Zap}
-          color="emerald"
-          subtitle="Pending review"
-        />
-        <StatCard
-          title="Today's Leads"
-          value={stats?.today || 0}
-          icon={Calendar}
-          color="amber"
-          subtitle="Discovered in last 24h"
-        />
-        <StatCard
-          title="Qualified Leads"
-          value={stats?.qualified_leads || 0}
-          icon={UserCheck}
-          color="purple"
-          subtitle="High-intent opportunities"
-        />
-      </div>
-
-      {/* Charts Section */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-6">
-        {/* Leads Over Time Chart */}
-        <div className="glass-card p-4 md:p-6 rounded-2xl border border-slate-800 space-y-3 md:space-y-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <TrendingUp className="w-5 h-5 text-indigo-400" />
-              <h3 className="text-sm md:text-base font-bold text-white">Leads Over Time</h3>
-            </div>
-            <span className="text-[11px] md:text-xs text-slate-400">Last 7 Days</span>
+    <div className="space-y-6">
+      {/* Precision KPI Metrics Strip (Attio / Linear metric modules) */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+        {/* Total Discovered */}
+        <div className="p-4 bg-[#0f1117] border border-[#1f2430] rounded-lg flex flex-col justify-between">
+          <div className="flex items-center justify-between text-xs text-[#8a8f9e]">
+            <span className="font-medium">Total Inquiries</span>
+            <span className="text-[10px] font-mono text-[#555a68]">Cumulative</span>
           </div>
-          <div className="h-52 md:h-64 w-full pt-2">
-            <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={stats?.over_time || []}>
-                <defs>
-                  <linearGradient id="colorLeads" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#6366F1" stopOpacity={0.4} />
-                    <stop offset="95%" stopColor="#6366F1" stopOpacity={0} />
-                  </linearGradient>
-                </defs>
-                <XAxis dataKey="date" stroke="#64748B" fontSize={11} tickLine={false} />
-                <YAxis stroke="#64748B" fontSize={11} tickLine={false} allowDecimals={false} />
-                <Tooltip
-                  contentStyle={{ backgroundColor: '#0F172A', borderColor: '#334155', borderRadius: '12px', color: '#FFF' }}
-                />
-                <Area type="monotone" dataKey="leads" stroke="#6366F1" strokeWidth={2.5} fillOpacity={1} fill="url(#colorLeads)" />
-              </AreaChart>
-            </ResponsiveContainer>
+          <div className="mt-3">
+            <span className="text-2xl font-bold font-mono tracking-tight text-[#ededef] tabular-nums">{total}</span>
+            <div className="w-full bg-[#161922] h-1 rounded-full mt-2 overflow-hidden">
+              <div className="bg-[#ededef] h-full" style={{ width: '100%' }} />
+            </div>
+            <span className="text-[11px] text-[#555a68] mt-1.5 block">Stored in local database</span>
           </div>
         </div>
 
-        {/* Leads by Service Category Bar Chart */}
-        <div className="glass-card p-4 md:p-6 rounded-2xl border border-slate-800 space-y-3 md:space-y-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <Layers className="w-5 h-5 text-emerald-400" />
-              <h3 className="text-sm md:text-base font-bold text-white">Leads by Category</h3>
-            </div>
-            <span className="text-[11px] md:text-xs text-slate-400">Real Category Breakdown</span>
+        {/* New Leads */}
+        <div className="p-4 bg-[#0f1117] border border-[#1f2430] rounded-lg flex flex-col justify-between">
+          <div className="flex items-center justify-between text-xs text-[#8a8f9e]">
+            <span className="font-medium">Unreviewed Leads</span>
+            <span className="text-[10px] font-mono text-[#38bdf8] font-semibold">{newPct}% pool</span>
           </div>
-          <div className="h-52 md:h-64 w-full pt-2">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={stats?.by_service || []}>
-                <XAxis dataKey="service" stroke="#64748B" fontSize={10} tickLine={false} />
-                <YAxis stroke="#64748B" fontSize={11} tickLine={false} allowDecimals={false} />
-                <Tooltip
-                  contentStyle={{ backgroundColor: '#0F172A', borderColor: '#334155', borderRadius: '12px', color: '#FFF' }}
-                />
-                <Bar dataKey="count" fill="#10B981" radius={[6, 6, 0, 0]} />
-              </BarChart>
-            </ResponsiveContainer>
+          <div className="mt-3">
+            <span className="text-2xl font-bold font-mono tracking-tight text-[#38bdf8] tabular-nums">{newLeads}</span>
+            <div className="w-full bg-[#161922] h-1 rounded-full mt-2 overflow-hidden">
+              <div className="bg-[#38bdf8] h-full transition-all" style={{ width: `${newPct}%` }} />
+            </div>
+            <span className="text-[11px] text-[#555a68] mt-1.5 block">Pending outreach or status</span>
+          </div>
+        </div>
+
+        {/* Contacted */}
+        <div className="p-4 bg-[#0f1117] border border-[#1f2430] rounded-lg flex flex-col justify-between">
+          <div className="flex items-center justify-between text-xs text-[#8a8f9e]">
+            <span className="font-medium">In Outreach</span>
+            <span className="text-[10px] font-mono text-[#fbbf24] font-semibold">{contactedPct}% pool</span>
+          </div>
+          <div className="mt-3">
+            <span className="text-2xl font-bold font-mono tracking-tight text-[#fbbf24] tabular-nums">{contacted}</span>
+            <div className="w-full bg-[#161922] h-1 rounded-full mt-2 overflow-hidden">
+              <div className="bg-[#fbbf24] h-full transition-all" style={{ width: `${contactedPct}%` }} />
+            </div>
+            <span className="text-[11px] text-[#555a68] mt-1.5 block">Message dispatched</span>
+          </div>
+        </div>
+
+        {/* Qualified */}
+        <div className="p-4 bg-[#0f1117] border border-[#1f2430] rounded-lg flex flex-col justify-between">
+          <div className="flex items-center justify-between text-xs text-[#8a8f9e]">
+            <span className="font-medium">Verified Opportunities</span>
+            <span className="text-[10px] font-mono text-[#34d399] font-semibold">{qualifiedPct}% pool</span>
+          </div>
+          <div className="mt-3">
+            <span className="text-2xl font-bold font-mono tracking-tight text-[#34d399] tabular-nums">{qualified}</span>
+            <div className="w-full bg-[#161922] h-1 rounded-full mt-2 overflow-hidden">
+              <div className="bg-[#34d399] h-full transition-all" style={{ width: `${qualifiedPct}%` }} />
+            </div>
+            <span className="text-[11px] text-[#555a68] mt-1.5 block">High intent matches</span>
           </div>
         </div>
       </div>
 
-      {/* Recent Leads Section */}
-      <div className="space-y-4">
-        <div className="flex items-center justify-between">
-          <h3 className="text-lg font-bold text-white tracking-tight">Recent Potential Leads</h3>
-          {onRunSearch && (
-            <button
-              onClick={() => onRunSearch({})}
-              disabled={isSearching}
-              className="px-3.5 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold shadow-md flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
-            >
-              <Play className="w-3 h-3 fill-current" />
-              <span>{isSearching ? 'Searching...' : 'Run Auto-Search Now'}</span>
-            </button>
-          )}
+      {/* Analytics Breakdown Grid (Linear-Style High Density Progress Rows) */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-3">
+        {/* Platform Sources */}
+        <div className="p-4 bg-[#0f1117] border border-[#1f2430] rounded-lg space-y-3">
+          <div className="flex items-center justify-between border-b border-[#1f2430] pb-2">
+            <span className="text-xs font-semibold text-[#ededef]">Source Distribution</span>
+            <span className="text-[10px] font-mono text-[#555a68]">Verified Posts</span>
+          </div>
+
+          <div className="space-y-2.5 pt-1">
+            {stats?.by_source && stats.by_source.length > 0 ? (
+              stats.by_source.map((item) => {
+                const count = item.count;
+                const pct = Math.round((count / totalSafe) * 100);
+                return (
+                  <div key={item.source} className="space-y-1">
+                    <div className="flex items-center justify-between text-xs">
+                      <span className="text-[#8a8f9e]">{item.source}</span>
+                      <span className="font-mono text-[#ededef] font-medium tabular-nums">{count} ({pct}%)</span>
+                    </div>
+                    <div className="w-full bg-[#161922] h-1 rounded-full overflow-hidden">
+                      <div className="bg-[#5e6ad2] h-full" style={{ width: `${pct}%` }} />
+                    </div>
+                  </div>
+                );
+              })
+            ) : (
+              <p className="text-xs text-[#555a68]">No platform breakdown available.</p>
+            )}
+          </div>
         </div>
+
+        {/* Service Demand Breakdown */}
+        <div className="p-4 bg-[#0f1117] border border-[#1f2430] rounded-lg space-y-3 lg:col-span-2">
+          <div className="flex items-center justify-between border-b border-[#1f2430] pb-2">
+            <span className="text-xs font-semibold text-[#ededef]">Service Demand Breakdown</span>
+            <span className="text-[10px] font-mono text-[#555a68]">Keywords & Categories</span>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-2.5 pt-1">
+            {stats?.by_service && stats.by_service.length > 0 ? (
+              stats.by_service.slice(0, 8).map((item) => {
+                const count = item.count;
+                const pct = Math.round((count / totalSafe) * 100);
+                return (
+                  <div key={item.service} className="space-y-1">
+                    <div className="flex items-center justify-between text-xs">
+                      <span className="text-[#8a8f9e] truncate pr-2">{item.service}</span>
+                      <span className="font-mono text-[#ededef] font-medium shrink-0 tabular-nums">{count}</span>
+                    </div>
+                    <div className="w-full bg-[#161922] h-1 rounded-full overflow-hidden">
+                      <div className="bg-[#38bdf8] h-full" style={{ width: `${Math.min(pct * 2, 100)}%` }} />
+                    </div>
+                  </div>
+                );
+              })
+            ) : (
+              <p className="text-xs text-[#555a68]">No service categorizations recorded.</p>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* Discovered Leads Section */}
+      <div className="space-y-3">
+        <div className="flex items-center justify-between border-b border-[#1f2430] pb-2">
+          <div>
+            <h3 className="text-xs font-semibold text-[#ededef] uppercase tracking-wider">Recent Opportunities</h3>
+            <p className="text-[11px] text-[#8a8f9e]">High-intent posts seeking marketing, development, or agency services</p>
+          </div>
+
+          <button
+            type="button"
+            onClick={() => onRunSearch({})}
+            disabled={isSearching}
+            className="flex items-center gap-1.5 px-3 py-1.5 bg-[#161922] hover:bg-[#1f2430] text-[#ededef] border border-[#282f40] rounded-md text-xs font-medium transition-colors disabled:opacity-50"
+          >
+            <Play className={`w-3 h-3 fill-current ${isSearching ? 'animate-pulse text-[#5e6ad2]' : ''}`} />
+            <span>{isSearching ? 'Executing Scan...' : 'Trigger Scan Now'}</span>
+          </button>
+        </div>
+
         <LeadTable
           leads={recentLeads}
           onSelectLead={onSelectLead}

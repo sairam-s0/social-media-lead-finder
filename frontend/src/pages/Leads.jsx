@@ -1,5 +1,14 @@
 import React, { useState, useEffect } from 'react';
-import { Search, Filter, RefreshCw, ChevronLeft, ChevronRight, X, Tag, Download, Loader2 } from 'lucide-react';
+import { 
+  Search, 
+  Filter, 
+  RefreshCw, 
+  ChevronLeft, 
+  ChevronRight, 
+  X, 
+  Download, 
+  FileSpreadsheet
+} from 'lucide-react';
 import LeadTable from '../components/LeadTable';
 import { getLeads, updateLead, exportLeads } from '../services/api';
 
@@ -12,21 +21,17 @@ const Leads = ({ onSelectLead }) => {
   const [source, setSource] = useState('');
   const [location, setLocation] = useState('');
   const [isLoading, setIsLoading] = useState(true);
-  const [isExporting, setIsExporting] = useState(false);
-  const [showMobileFilters, setShowMobileFilters] = useState(false);
+  const [isExportingCSV, setIsExportingCSV] = useState(false);
+  const [isExportingExcel, setIsExportingExcel] = useState(false);
+  const [showFiltersModal, setShowFiltersModal] = useState(false);
 
-  // Quick preset keyword chips for convenience
   const quickKeywordChips = [
     'Digital Marketing',
     'SEO',
-    'Social Media',
     'Web Development',
     'Google Ads',
     'Lead Generation',
-    'Job',
-    'Hiring',
-    'Agency',
-    'Freelancer'
+    'Agency'
   ];
 
   const fetchLeadsData = async (pageNumber = 1) => {
@@ -42,8 +47,8 @@ const Leads = ({ onSelectLead }) => {
         location
       });
       if (res.success) {
-        setLeads(res.leads);
-        setPagination(res.pagination);
+        setLeads(res.leads || []);
+        setPagination(res.pagination || { page: 1, limit: 15, total: 0, total_pages: 1 });
       }
     } catch (err) {
       console.error('Failed to fetch leads:', err);
@@ -85,217 +90,227 @@ const Leads = ({ onSelectLead }) => {
     }
   };
 
-  const [isExportingExcel, setIsExportingExcel] = useState(false);
+  const handleExport = async (format = 'csv') => {
+    if (format === 'excel') setIsExportingExcel(true);
+    else setIsExportingCSV(true);
 
-  const handleExportCSV = async () => {
-    setIsExporting(true);
     try {
-      await exportLeads('csv');
+      await exportLeads(format);
     } catch (err) {
       alert('Export failed: ' + (err.message || 'Unknown error'));
     } finally {
-      setIsExporting(false);
-    }
-  };
-
-  const handleExportExcel = async () => {
-    setIsExportingExcel(true);
-    try {
-      await exportLeads('xlsx');
-    } catch (err) {
-      alert('Excel export failed: ' + (err.message || 'Unknown error'));
-    } finally {
+      setIsExportingCSV(false);
       setIsExportingExcel(false);
     }
   };
 
-  return (
-    <div className="space-y-6 pb-12">
-      {/* Search and Filters Bar */}
-      <div className="glass-card p-4 md:p-5 rounded-2xl border border-slate-800 space-y-3">
-        <form onSubmit={handleSearchSubmit} className="space-y-3">
-          {/* Main Search Row */}
-          <div className="flex items-center gap-2">
-            {/* Search Query Input */}
-            <div className="relative flex-1">
-              <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-3.5" />
-              <input
-                type="text"
-                placeholder="Search leads, companies, or keywords..."
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                className="w-full pl-10 pr-9 py-2.5 rounded-xl bg-slate-950 border border-slate-800 text-sm text-white focus:border-indigo-500 outline-none placeholder:text-slate-500"
-              />
-              {search && (
-                <button
-                  type="button"
-                  onClick={() => {
-                    setSearch('');
-                    fetchLeadsData(1);
-                  }}
-                  className="absolute right-3 top-3 text-slate-500 hover:text-white"
-                >
-                  <X className="w-4 h-4" />
-                </button>
-              )}
-            </div>
+  const activeFiltersCount = [keyword, status, source, location].filter(Boolean).length;
 
-            {/* Mobile Filter Toggle Button */}
+  return (
+    <div className="space-y-3.5">
+      {/* Top Filter & Command Bar */}
+      <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2.5">
+        <form onSubmit={handleSearchSubmit} className="flex-1 flex items-center gap-2 max-w-xl">
+          <div className="relative flex-1">
+            <Search className="w-3.5 h-3.5 text-[#555a68] absolute left-3 top-2.5 pointer-events-none" />
+            <input
+              type="text"
+              placeholder="Search company, title, or post text..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="w-full pl-8 pr-3 py-1.5 bg-[#0f1117] border border-[#1f2430] rounded-md text-xs text-[#ededef] placeholder-[#555a68] focus:border-[#5e6ad2] focus:outline-none"
+            />
+          </div>
+
+          <button
+            type="button"
+            onClick={() => setShowFiltersModal(true)}
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium border transition-colors ${
+              activeFiltersCount > 0
+                ? 'bg-[#161922] text-[#ededef] border-[#5e6ad2]'
+                : 'bg-[#0f1117] text-[#8a8f9e] border-[#1f2430] hover:text-[#ededef]'
+            }`}
+          >
+            <Filter className="w-3.5 h-3.5" />
+            <span>Filters {activeFiltersCount > 0 ? `(${activeFiltersCount})` : ''}</span>
+          </button>
+        </form>
+
+        {/* Data Exports */}
+        <div className="flex items-center gap-1.5 justify-end">
+          <button
+            type="button"
+            onClick={() => handleExport('csv')}
+            disabled={isExportingCSV}
+            className="flex items-center gap-1 px-2.5 py-1.5 bg-[#0f1117] hover:bg-[#161922] border border-[#1f2430] rounded-md text-[11px] text-[#8a8f9e] hover:text-[#ededef] transition-colors disabled:opacity-50"
+          >
+            <Download className="w-3 h-3" />
+            <span>{isExportingCSV ? 'CSV...' : 'CSV'}</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => handleExport('excel')}
+            disabled={isExportingExcel}
+            className="flex items-center gap-1 px-2.5 py-1.5 bg-[#0f1117] hover:bg-[#161922] border border-[#1f2430] rounded-md text-[11px] text-[#8a8f9e] hover:text-[#ededef] transition-colors disabled:opacity-50"
+          >
+            <FileSpreadsheet className="w-3 h-3 text-[#34d399]" />
+            <span>{isExportingExcel ? 'Excel...' : 'Excel'}</span>
+          </button>
+        </div>
+      </div>
+
+      {/* Quick Service Filter Pills */}
+      <div className="flex items-center gap-1.5 overflow-x-auto py-0.5 no-scrollbar text-xs">
+        <span className="text-[11px] text-[#555a68] font-mono mr-1">Filter:</span>
+        {quickKeywordChips.map((chip) => {
+          const isSelected = keyword === chip;
+          return (
             <button
+              key={chip}
               type="button"
-              onClick={() => setShowMobileFilters(!showMobileFilters)}
-              className={`md:hidden px-3 py-2.5 rounded-xl border text-xs font-semibold flex items-center gap-1.5 transition-all ${
-                showMobileFilters || status || source || keyword
-                  ? 'bg-indigo-600/20 text-indigo-300 border-indigo-500/40'
-                  : 'bg-slate-950 text-slate-400 border-slate-800'
+              onClick={() => {
+                const newK = isSelected ? '' : chip;
+                setKeyword(newK);
+                fetchLeadsData(1);
+              }}
+              className={`px-2 py-0.5 rounded text-[11px] font-medium transition-colors shrink-0 ${
+                isSelected
+                  ? 'bg-[#161922] text-[#ededef] border border-[#5e6ad2]'
+                  : 'bg-[#0f1117] text-[#8a8f9e] border border-[#1f2430] hover:text-[#ededef]'
               }`}
             >
-              <Filter className="w-3.5 h-3.5" />
-              <span>{(status || source || keyword) ? 'Active' : 'Filters'}</span>
+              {chip}
             </button>
+          );
+        })}
+      </div>
 
-            {/* Desktop Apply Button */}
+      {/* Leads Table Component */}
+      {isLoading ? (
+        <div className="p-12 text-center text-[#8a8f9e] flex items-center justify-center bg-[#0f1117] border border-[#1f2430] rounded-lg" role="status">
+          <div className="flex items-center gap-2 text-xs">
+            <RefreshCw className="w-4 h-4 animate-spin text-[#5e6ad2]" />
+            <span>Loading leads...</span>
+          </div>
+        </div>
+      ) : (
+        <LeadTable
+          leads={leads}
+          onSelectLead={onSelectLead}
+          onStatusChange={handleStatusChange}
+        />
+      )}
+
+      {/* Pagination Controls */}
+      {pagination.total_pages > 1 && (
+        <div className="flex items-center justify-between px-2 py-2 text-xs text-[#8a8f9e]">
+          <span>
+            Page <strong className="text-[#ededef]">{pagination.page}</strong> of <strong className="text-[#ededef]">{pagination.total_pages}</strong> ({pagination.total} total leads)
+          </span>
+
+          <div className="flex items-center gap-1">
             <button
-              type="submit"
-              className="hidden md:flex px-4 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold shadow-md shadow-indigo-600/20 cursor-pointer items-center gap-2"
+              type="button"
+              disabled={pagination.page <= 1}
+              onClick={() => fetchLeadsData(pagination.page - 1)}
+              className="p-1.5 rounded bg-[#0f1117] border border-[#1f2430] text-[#8a8f9e] hover:text-[#ededef] disabled:opacity-40"
+              aria-label="Previous Page"
             >
-              <Filter className="w-3.5 h-3.5" />
-              <span>Search</span>
+              <ChevronLeft className="w-3.5 h-3.5" />
+            </button>
+            <button
+              type="button"
+              disabled={pagination.page >= pagination.total_pages}
+              onClick={() => fetchLeadsData(pagination.page + 1)}
+              className="p-1.5 rounded bg-[#0f1117] border border-[#1f2430] text-[#8a8f9e] hover:text-[#ededef] disabled:opacity-40"
+              aria-label="Next Page"
+            >
+              <ChevronRight className="w-3.5 h-3.5" />
             </button>
           </div>
+        </div>
+      )}
 
-          {/* Quick Keyword Suggestion Chips (Swipeable on Mobile) */}
-          <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-1 -mx-1 px-1">
-            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider shrink-0 pr-1">Keywords:</span>
-            {quickKeywordChips.map((chip) => (
+      {/* Filter Modal Sheet */}
+      {showFiltersModal && (
+        <div className="fixed inset-0 z-50 bg-[#090a0f]/80 flex items-center justify-center p-4 animate-in fade-in">
+          <div className="w-full max-w-sm bg-[#0f1117] border border-[#282f40] rounded-lg p-4 space-y-3.5 text-xs shadow-2xl">
+            <div className="flex items-center justify-between border-b border-[#1f2430] pb-2.5">
+              <span className="font-semibold text-[#ededef]">Filter Leads</span>
               <button
-                key={chip}
                 type="button"
-                onClick={() => {
-                  if (keyword.toLowerCase() === chip.toLowerCase()) {
-                    setKeyword('');
-                  } else {
-                    setKeyword(chip);
-                  }
-                  fetchLeadsData(1);
-                }}
-                className={`px-2.5 py-1 rounded-xl text-xs font-medium transition-all shrink-0 border active:scale-95 ${
-                  keyword.toLowerCase() === chip.toLowerCase()
-                    ? 'bg-indigo-600 text-white border-indigo-500 shadow-sm shadow-indigo-600/30'
-                    : 'bg-slate-950/80 text-slate-400 border-slate-800 hover:text-white hover:border-slate-700'
-                }`}
+                onClick={() => setShowFiltersModal(false)}
+                className="text-[#8a8f9e] hover:text-[#ededef]"
               >
-                {keyword.toLowerCase() === chip.toLowerCase() ? `✓ ${chip}` : `+ ${chip}`}
+                <X className="w-4 h-4" />
               </button>
-            ))}
-          </div>
+            </div>
 
-          {/* Secondary Filters & Exports (Collapsible on Mobile, always visible on Desktop) */}
-          <div className={`${showMobileFilters ? 'flex' : 'hidden'} md:flex flex-wrap items-center gap-2 pt-2 border-t border-slate-800/80 animate-in fade-in duration-150`}>
-            {/* Status Filter */}
-            <select
-              value={status}
-              onChange={(e) => setStatus(e.target.value)}
-              className="px-3 py-2 rounded-xl bg-slate-950 border border-slate-800 text-xs font-medium text-slate-300 focus:border-indigo-500 outline-none cursor-pointer flex-1 md:flex-none"
-            >
-              <option value="">All Statuses</option>
-              <option value="new">NEW</option>
-              <option value="contacted">CONTACTED</option>
-              <option value="qualified">QUALIFIED</option>
-              <option value="converted">CONVERTED</option>
-              <option value="rejected">REJECTED</option>
-            </select>
+            <div className="space-y-2.5">
+              <div>
+                <label className="block text-[#8a8f9e] mb-1 font-medium">Status</label>
+                <select
+                  value={status}
+                  onChange={(e) => setStatus(e.target.value)}
+                  className="w-full p-2 bg-[#090a0f] border border-[#1f2430] rounded-md text-[#ededef]"
+                >
+                  <option value="">All Statuses</option>
+                  <option value="new">New</option>
+                  <option value="contacted">Contacted</option>
+                  <option value="qualified">Qualified</option>
+                  <option value="converted">Converted</option>
+                  <option value="rejected">Rejected</option>
+                </select>
+              </div>
 
-            {/* Source Filter */}
-            <select
-              value={source}
-              onChange={(e) => setSource(e.target.value)}
-              className="px-3 py-2 rounded-xl bg-slate-950 border border-slate-800 text-xs font-medium text-slate-300 focus:border-indigo-500 outline-none cursor-pointer flex-1 md:flex-none"
-            >
-              <option value="">All Sources</option>
-              <option value="LinkedIn">LinkedIn</option>
-              <option value="Twitter">Twitter / X</option>
-              <option value="Reddit">Reddit</option>
-              <option value="Public Web">Public Web</option>
-            </select>
+              <div>
+                <label className="block text-[#8a8f9e] mb-1 font-medium">Source Platform</label>
+                <select
+                  value={source}
+                  onChange={(e) => setSource(e.target.value)}
+                  className="w-full p-2 bg-[#090a0f] border border-[#1f2430] rounded-md text-[#ededef]"
+                >
+                  <option value="">All Platforms</option>
+                  <option value="LinkedIn">LinkedIn</option>
+                  <option value="Twitter">Twitter / X</option>
+                  <option value="Reddit">Reddit</option>
+                </select>
+              </div>
 
-            {/* Export CSV Button */}
-            <button
-              type="button"
-              onClick={handleExportCSV}
-              disabled={isExporting}
-              className="px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-white text-xs font-semibold flex items-center gap-1.5 transition cursor-pointer disabled:opacity-40"
-              title="Export leads to CSV"
-            >
-              {isExporting ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Download className="w-3.5 h-3.5" />}
-              <span>CSV</span>
-            </button>
+              <div>
+                <label className="block text-[#8a8f9e] mb-1 font-medium">Location</label>
+                <input
+                  type="text"
+                  placeholder="e.g. Remote, San Francisco"
+                  value={location}
+                  onChange={(e) => setLocation(e.target.value)}
+                  className="w-full p-2 bg-[#090a0f] border border-[#1f2430] rounded-md text-[#ededef]"
+                />
+              </div>
+            </div>
 
-            {/* Export Excel (.xlsx) Button */}
-            <button
-              type="button"
-              onClick={handleExportExcel}
-              disabled={isExportingExcel}
-              className="px-3 py-2 rounded-xl bg-emerald-600/80 hover:bg-emerald-600 text-white text-xs font-semibold flex items-center gap-1.5 transition cursor-pointer disabled:opacity-40 shadow-sm"
-              title="Export leads to Excel"
-            >
-              {isExportingExcel ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Download className="w-3.5 h-3.5" />}
-              <span>Excel</span>
-            </button>
-
-            {(search || keyword || status || source || location) && (
+            <div className="flex items-center gap-2 pt-2 border-t border-[#1f2430]">
               <button
                 type="button"
                 onClick={handleClearFilters}
-                className="px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-medium cursor-pointer"
+                className="flex-1 py-1.5 bg-[#161922] text-[#8a8f9e] hover:text-[#ededef] rounded-md font-medium"
               >
-                Clear All
+                Reset
               </button>
-            )}
-          </div>
-        </form>
-      </div>
-
-      {/* Main Leads Data Table */}
-      {isLoading ? (
-        <div className="p-12 text-center text-slate-500 flex justify-center glass-card rounded-2xl">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-500"></div>
-        </div>
-      ) : (
-        <>
-          <LeadTable
-            leads={leads}
-            onSelectLead={onSelectLead}
-            onStatusChange={handleStatusChange}
-          />
-
-          {/* Pagination Bar */}
-          <div className="flex items-center justify-between p-4 glass-card rounded-2xl border border-slate-800">
-            <span className="text-xs text-slate-400">
-              Showing <span className="font-semibold text-white">{leads.length}</span> of <span className="font-semibold text-white">{pagination.total}</span> leads
-            </span>
-
-            <div className="flex items-center gap-2">
               <button
-                disabled={pagination.page <= 1}
-                onClick={() => fetchLeadsData(pagination.page - 1)}
-                className="px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-medium disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-1 cursor-pointer"
+                type="button"
+                onClick={() => {
+                  setShowFiltersModal(false);
+                  fetchLeadsData(1);
+                }}
+                className="flex-1 py-1.5 bg-[#ededef] hover:bg-white text-[#090a0f] rounded-md font-semibold"
               >
-                <ChevronLeft className="w-4 h-4" /> Previous
-              </button>
-              <span className="text-xs font-bold text-slate-300 px-2">
-                Page {pagination.page} / {pagination.total_pages || 1}
-              </span>
-              <button
-                disabled={pagination.page >= pagination.total_pages}
-                onClick={() => fetchLeadsData(pagination.page + 1)}
-                className="px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-medium disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-1 cursor-pointer"
-              >
-                Next <ChevronRight className="w-4 h-4" />
+                Apply
               </button>
             </div>
           </div>
-        </>
+        </div>
       )}
     </div>
   );

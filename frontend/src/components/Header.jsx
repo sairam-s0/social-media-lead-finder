@@ -1,13 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { Play, RefreshCw, Activity, Search, Smartphone } from 'lucide-react';
+import { Play, RefreshCw, Search, Smartphone, ChevronDown, Check } from 'lucide-react';
 import { getSearchQueries } from '../services/api';
-import MobileConnectModal from './MobileConnectModal';
 
-const Header = ({ title, onRunSearch, isSearching, healthStatus }) => {
+const Header = ({ title, onRunSearch, isSearching, healthStatus, onOpenMobileModal }) => {
   const [selectedQueryId, setSelectedQueryId] = useState('');
   const [typedQuery, setTypedQuery] = useState('');
   const [configuredQueries, setConfiguredQueries] = useState([]);
-  const [showMobileModal, setShowMobileModal] = useState(false);
+  const [isQueryDropdownOpen, setIsQueryDropdownOpen] = useState(false);
 
   useEffect(() => {
     getSearchQueries().then((res) => {
@@ -17,7 +16,10 @@ const Header = ({ title, onRunSearch, isSearching, healthStatus }) => {
     }).catch(() => {});
   }, []);
 
-  const handleTriggerRun = () => {
+  const selectedQueryObj = configuredQueries.find((q) => String(q.id) === String(selectedQueryId));
+
+  const handleTriggerRun = (e) => {
+    if (e) e.preventDefault();
     const cleanTyped = typedQuery.trim();
     if (cleanTyped) {
       onRunSearch({ customQuery: cleanTyped });
@@ -29,115 +31,118 @@ const Header = ({ title, onRunSearch, isSearching, healthStatus }) => {
   };
 
   return (
-    <>
-      <header className="h-16 glass-panel border-b border-slate-800 px-4 md:px-6 flex items-center justify-between shrink-0 gap-3 relative z-30">
-        {/* Left: Title & Mobile Brand */}
-        <div className="flex items-center gap-2 min-w-0">
+    <header className="h-14 bg-[#090a0f] border-b border-[#1f2430] px-5 md:px-8 flex items-center justify-between shrink-0 gap-4 z-30 select-none">
+      {/* Title & Quick Status Indicator */}
+      <div className="flex items-center gap-3 min-w-0">
+        <button
+          type="button"
+          onClick={onOpenMobileModal}
+          className="md:hidden p-1.5 rounded-md bg-[#161922] border border-[#282f40] text-[#8a8f9e] hover:text-[#ededef]"
+          aria-label="Connect Mobile Device"
+        >
+          <Smartphone className="w-3.5 h-3.5" />
+        </button>
+
+        <div className="flex items-center gap-2">
+          <h1 className="text-sm font-semibold text-[#ededef] tracking-tight">{title}</h1>
+          <span className="w-1.5 h-1.5 rounded-full bg-[#34d399]" title="Engine Connected" />
+        </div>
+      </div>
+
+      {/* Mobile Top Scan Trigger */}
+      <div className="flex md:hidden items-center">
+        <button
+          type="button"
+          onClick={() => onRunSearch({})}
+          disabled={isSearching}
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-[#ededef] hover:bg-white text-[#090a0f] text-xs font-semibold disabled:opacity-50 min-h-[36px]"
+        >
+          <RefreshCw className={`w-3.5 h-3.5 ${isSearching ? 'animate-spin' : ''}`} />
+          <span>{isSearching ? 'Scanning' : 'Scan'}</span>
+        </button>
+      </div>
+
+      {/* Desktop Search Palette Strip */}
+      <form onSubmit={handleTriggerRun} className="hidden md:flex items-center gap-2 max-w-xl flex-1 justify-end">
+        {/* Custom Headless Query Selector Popover */}
+        <div className="relative">
           <button
-            onClick={() => setShowMobileModal(true)}
-            className="md:hidden w-8 h-8 rounded-lg bg-indigo-600/20 border border-indigo-500/30 flex items-center justify-center text-lg shrink-0 cursor-pointer active:scale-95 transition"
-            title="Connect Mobile / View Network"
+            type="button"
+            onClick={() => setIsQueryDropdownOpen(!isQueryDropdownOpen)}
+            className="flex items-center justify-between gap-2 px-3 py-1.5 bg-[#0f1117] hover:bg-[#161922] border border-[#1f2430] rounded-md text-xs text-[#8a8f9e] hover:text-[#ededef] transition-colors max-w-[200px]"
           >
-            ⚡
+            <span className="truncate">
+              {selectedQueryObj ? selectedQueryObj.name : 'All Active Queries'}
+            </span>
+            <ChevronDown className="w-3.5 h-3.5 shrink-0 opacity-60" />
           </button>
-          <div className="min-w-0">
-            <h1 className="text-base md:text-xl font-bold text-white tracking-tight truncate">{title}</h1>
-            <button
-              onClick={() => setShowMobileModal(true)}
-              className="flex items-center gap-1.5 md:hidden cursor-pointer"
-            >
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-              <span className="text-[10px] text-slate-400 font-medium tracking-tight">
-                Desktop & Mobile Sync Active
-              </span>
-            </button>
-          </div>
+
+          {isQueryDropdownOpen && (
+            <>
+              <div 
+                className="fixed inset-0 z-40" 
+                onClick={() => setIsQueryDropdownOpen(false)} 
+              />
+              <div className="absolute right-0 top-full mt-1 w-64 bg-[#0f1117] border border-[#282f40] rounded-md shadow-xl py-1 z-50 text-xs max-h-60 overflow-y-auto">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSelectedQueryId('');
+                    setIsQueryDropdownOpen(false);
+                  }}
+                  className="w-full px-3 py-1.5 text-left flex items-center justify-between hover:bg-[#161922] text-[#ededef]"
+                >
+                  <span className="truncate">All Active Queries</span>
+                  {!selectedQueryId && <Check className="w-3.5 h-3.5 text-[#5e6ad2]" />}
+                </button>
+                {configuredQueries.map((q) => (
+                  <button
+                    key={q.id}
+                    type="button"
+                    onClick={() => {
+                      setSelectedQueryId(String(q.id));
+                      setTypedQuery('');
+                      setIsQueryDropdownOpen(false);
+                    }}
+                    className="w-full px-3 py-1.5 text-left flex items-center justify-between hover:bg-[#161922] text-[#8a8f9e] hover:text-[#ededef]"
+                  >
+                    <span className="truncate">{q.name}</span>
+                    {String(selectedQueryId) === String(q.id) && (
+                      <Check className="w-3.5 h-3.5 text-[#5e6ad2]" />
+                    )}
+                  </button>
+                ))}
+              </div>
+            </>
+          )}
         </div>
 
-        {/* Mobile Quick Run Search Button */}
-        <div className="flex md:hidden items-center gap-2">
-          <button
-            onClick={() => onRunSearch({})}
-            disabled={isSearching}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-indigo-600 active:scale-95 text-white text-xs font-semibold shadow-lg shadow-indigo-600/30 transition-all disabled:opacity-50"
-          >
-            {isSearching ? (
-              <RefreshCw className="w-3.5 h-3.5 animate-spin" />
-            ) : (
-              <Play className="w-3 h-3 fill-current" />
-            )}
-            <span>{isSearching ? 'Searching...' : 'Scan Leads'}</span>
-          </button>
-        </div>
-
-        {/* Desktop Target Search Execution Bar */}
-        <div className="hidden md:flex items-center gap-3 flex-1 max-w-2xl justify-end">
-          <select
-            value={selectedQueryId}
+        {/* Query Input */}
+        <div className="relative flex-1 min-w-[220px]">
+          <Search className="w-3.5 h-3.5 text-[#555a68] absolute left-3 top-2.5 pointer-events-none" />
+          <input
+            type="text"
+            placeholder="Type quick search phrase..."
+            value={typedQuery}
             onChange={(e) => {
-              setSelectedQueryId(e.target.value);
-              if (e.target.value) setTypedQuery('');
+              setTypedQuery(e.target.value);
+              if (e.target.value) setSelectedQueryId('');
             }}
-            className="px-3 py-1.5 rounded-xl bg-slate-950 border border-slate-800 text-xs font-medium text-slate-300 focus:border-indigo-500 outline-none max-w-[180px] truncate cursor-pointer"
-          >
-            <option value="">-- All Active Queries --</option>
-            {configuredQueries.map((q) => (
-              <option key={q.id} value={q.id}>
-                {q.name}
-              </option>
-            ))}
-          </select>
-
-          <div className="relative min-w-[200px] flex-1">
-            <Search className="w-3.5 h-3.5 text-slate-500 absolute left-3 top-2.5" />
-            <input
-              type="text"
-              placeholder="Type custom query to run..."
-              value={typedQuery}
-              onChange={(e) => {
-                setTypedQuery(e.target.value);
-                if (e.target.value) setSelectedQueryId('');
-              }}
-              className="w-full pl-8 pr-3 py-1.5 rounded-xl bg-slate-950 border border-indigo-500/30 text-xs text-white placeholder:text-slate-500 focus:border-indigo-500 outline-none"
-            />
-          </div>
-
-          <button
-            onClick={handleTriggerRun}
-            disabled={isSearching}
-            className="flex items-center gap-2 px-4 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold shadow-lg shadow-indigo-600/20 transition-all duration-200 disabled:opacity-50 cursor-pointer shrink-0"
-          >
-            {isSearching ? (
-              <>
-                <RefreshCw className="w-3.5 h-3.5 animate-spin" />
-                <span>Scanning...</span>
-              </>
-            ) : (
-              <>
-                <Play className="w-3.5 h-3.5 fill-current" />
-                <span>Run Discovery</span>
-              </>
-            )}
-          </button>
-
-          {/* Connect Mobile Phone Button */}
-          <button
-            onClick={() => setShowMobileModal(true)}
-            className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-gradient-to-r from-indigo-600/25 via-violet-600/20 to-indigo-600/25 border border-indigo-500/40 hover:border-indigo-400 text-xs text-indigo-300 font-semibold shadow-md shadow-indigo-600/10 hover:text-white transition-all duration-200 shrink-0 cursor-pointer active:scale-95"
-            title="Connect Mobile Phone (Scan QR Code)"
-          >
-            <Smartphone className="w-3.5 h-3.5 text-indigo-400" />
-            <span>📱 Connect Phone</span>
-          </button>
+            className="w-full pl-8 pr-3 py-1.5 bg-[#0f1117] border border-[#1f2430] rounded-md text-xs text-[#ededef] placeholder-[#555a68] focus:border-[#5e6ad2] focus:outline-none transition-colors"
+          />
         </div>
-      </header>
 
-      {/* Mobile Connect & QR Code Modal */}
-      <MobileConnectModal
-        isOpen={showMobileModal}
-        onClose={() => setShowMobileModal(false)}
-      />
-    </>
+        {/* Primary Action Button */}
+        <button
+          type="submit"
+          disabled={isSearching}
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-[#ededef] hover:bg-white text-[#090a0f] text-xs font-semibold transition-all disabled:opacity-50 shrink-0 shadow-sm"
+        >
+          <Play className={`w-3 h-3 fill-current ${isSearching ? 'animate-pulse' : ''}`} />
+          <span>{isSearching ? 'Scanning...' : 'Execute Scan'}</span>
+        </button>
+      </form>
+    </header>
   );
 };
 
